@@ -1,5 +1,13 @@
 <a id="readme-top"></a>
 
+
+adがltfの場合、[こちら](https://huggingface.co/XDimLab/ICCV2025-RealADSim-ClosedLoop-SubmissionDemo/tree/b7857b255a75317adda6ba732337cc3581d3be46/ckpts)をダウンロードし、以下のように配置する。
+```bash
+NAVSIM_root/ckpts/ltf_seed_0.ckpt
+```
+
+---
+
 <!-- PROJECT LOGO -->
 <div align="center">
   <img src="assets/hugsim.png" alt="Logo" width="300">
