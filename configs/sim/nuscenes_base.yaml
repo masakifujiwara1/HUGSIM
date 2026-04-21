@@ -1,9 +1,9 @@
 realcar_path: /nas/users/hyzhou/PAMI2024/release/3DRealCar
-model_base: /nas/users/hyzhou/PAMI2024/release/ss/scenes/nuscenes
+model_base: /home/ubuntu/workspace/hugsim_model/export/
 uniad_path:  /nas/users/hyzhou/PAMI2024/release/UniAD_Sim/tools/e2e.sh
 vad_path:  /nas/users/hyzhou/PAMI2024/release/VAD_Sim/tools/e2e.sh
-ltf_path: /nas/users/hyzhou/PAMI2024/release/navsim/ltf_e2e.sh
-output_dir: /nas/users/hyzhou/PAMI2024/release/outputs/benchmark/out/nusc_
+ltf_path: /home/ubuntu/workspace/NAVSIM/ltf_e2e.sh
+output_dir: /home/ubuntu/workspace/hugsim_data/output/nusc_
 HD_map:
-  path: /nas/datasets/nuScenes/raw/Trainval
+  path: /home/ubuntu/workspace/hugsim_data/nusc_map_cache
   version: nusc_trainval
