@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  cpu:
+    container_name: my-cu118-cpu
+    image: cuda:my-cu118
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: host
+    ipc: host
+    privileged: true
+    environment:
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${XAUTH:-}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+      - ${XAUTH:-/tmp/.docker.xauth}:${XAUTH:-/tmp/.docker.xauth}
+      - /home/${USER}/.ssh:/home/ubuntu/.ssh
+      - /home/${USER}/.gitconfig:/home/ubuntu/.gitconfig
+      - /home/${USER}/docker_workspace:/home/ubuntu/workspace
+    stdin_open: true
+    tty: true
+
+  gpu:
+    container_name: my-cu118-gpu
+    image: cuda:my-cu118
+    build:
+      context: .
+      dockerfile: Dockerfile
+    network_mode: host
+    ipc: host
+    privileged: true
+    environment:
+      - DISPLAY=${DISPLAY}
+      - XAUTHORITY=${XAUTH:-}
+      - QT_X11_NO_MITSHM=1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+      - ${XAUTH:-/tmp/.docker.xauth}:${XAUTH:-/tmp/.docker.xauth}
+      - /home/${USER}/.ssh:/home/ubuntu/.ssh
+      - /home/${USER}/.gitconfig:/home/ubuntu/.gitconfig
+      - /home/${USER}/docker_workspace:/home/ubuntu/workspace
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    stdin_open: true
+    tty: true
