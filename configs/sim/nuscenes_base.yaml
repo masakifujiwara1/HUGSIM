@@ -1,5 +1,5 @@
-realcar_path: /nas/users/hyzhou/PAMI2024/release/3DRealCar
-model_base: /home/ubuntu/workspace/hugsim_model/export/
+realcar_path: /home/ubuntu/workspace/HUGSIM/download/3DRealCar
+model_base: /home/ubuntu/workspace/HUGSIM/download/scenes/nuscenes
 uniad_path:  /nas/users/hyzhou/PAMI2024/release/UniAD_Sim/tools/e2e.sh
 vad_path:  /nas/users/hyzhou/PAMI2024/release/VAD_Sim/tools/e2e.sh
 ltf_path: /home/ubuntu/workspace/NAVSIM/ltf_e2e.sh

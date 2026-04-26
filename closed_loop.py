@@ -15,6 +15,64 @@ import open3d as o3d
 from sim.utils.score_calculator import hugsim_evaluate
 import numpy as np
 from moviepy import ImageSequenceClip
+import struct
+
+MAX_PIPE_PAYLOAD_SIZE = 512 * 1024 * 1024
+PIPE_READ_CHUNK_SIZE = 1024 * 1024
+LTF_CAMERAS = ("CAM_FRONT", "CAM_FRONT_RIGHT", "CAM_FRONT_LEFT")
+
+
+def _read_exact(pipe, size):
+    chunks = []
+    bytes_remaining = size
+    while bytes_remaining > 0:
+        chunk = pipe.read(min(bytes_remaining, PIPE_READ_CHUNK_SIZE))
+        if not chunk:
+            raise EOFError(f"Expected {size} bytes from pipe, received {size - bytes_remaining}.")
+        chunks.append(chunk)
+        bytes_remaining -= len(chunk)
+    return b"".join(chunks)
+
+
+def _write_exact(pipe, payload):
+    view = memoryview(payload)
+    bytes_written = 0
+    while bytes_written < len(view):
+        written = pipe.write(view[bytes_written:])
+        if written is None or written == 0:
+            raise EOFError(f"Expected to write {len(view)} bytes to pipe, wrote {bytes_written}.")
+        bytes_written += written
+
+
+def _write_pickle_message(pipe, data):
+    payload = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+    _write_exact(pipe, struct.pack("!Q", len(payload)))
+    _write_exact(pipe, payload)
+
+
+def _read_pickle_message(pipe):
+    payload_size = struct.unpack("!Q", _read_exact(pipe, 8))[0]
+    if payload_size > MAX_PIPE_PAYLOAD_SIZE:
+        raise ValueError(
+            f"Invalid pipe payload size: {payload_size} bytes. "
+            "The pipe stream is likely out of sync."
+        )
+    return pickle.loads(_read_exact(pipe, payload_size))
+
+
+def _build_ltf_payload(obs, info):
+    compact_obs = {
+        "rgb": {cam: obs["rgb"][cam] for cam in LTF_CAMERAS},
+    }
+    compact_info = {
+        "ego_pos": info["ego_pos"],
+        "ego_steer": info["ego_steer"],
+        "ego_velo": info["ego_velo"],
+        "accelerate": info["accelerate"],
+        "command": info["command"],
+        "cam_params": info["cam_params"],
+    }
+    return compact_obs, compact_info
 
 def to_video(observations, output_path):
     frames = []
@@ -46,50 +104,49 @@ def create_gym_env(cfg, output):
     print('Ready for simulation')
 
     obs, info = None, None
-    while not done:
+    with open(obs_pipe, "wb", buffering=0) as obs_writer, open(plan_pipe, "rb", buffering=0) as plan_reader:
+        while not done:
 
-        if obs is None or info is None:
-            obs, info = env.reset()
-        observations_save.append(obs['rgb'])
-        infos_save.append(info)
+            if obs is None or info is None:
+                obs, info = env.reset()
+            observations_save.append(obs['rgb'])
+            infos_save.append(info)
 
-        print('ego pose', info['ego_pos'])
+            print('ego pose', info['ego_pos'])
 
-        with open(obs_pipe, "wb") as pipe:
-            pipe.write(pickle.dumps((obs, info)))
-        with open(plan_pipe, "rb") as pipe:
-            plan_traj = pickle.loads(pipe.read())
+            _write_pickle_message(obs_writer, _build_ltf_payload(obs, info))
+            plan_traj = _read_pickle_message(plan_reader)
 
-        if plan_traj is not None:
-            acc, steer_rate = traj2control(plan_traj, info)
+            if plan_traj is not None:
+                acc, steer_rate = traj2control(plan_traj, info)
 
-            action = {'acc': acc, 'steer_rate': steer_rate}
-            obs, reward, terminated, truncated, info = env.step(action)
-            cnt += 1
-            done = terminated or truncated or cnt > 400
+                action = {'acc': acc, 'steer_rate': steer_rate}
+                obs, reward, terminated, truncated, info = env.step(action)
+                cnt += 1
+                done = terminated or truncated or cnt > 400
 
-        else:  # AD Side Crushed
-            done = True
+            else:  # AD Side Crushed
+                done = True
+                continue
 
-        imu_plan_traj = plan_traj[:, [1, 0]]
-        imu_plan_traj[:, 1] *= -1
-        global_traj = traj_transform_to_global(imu_plan_traj, info['ego_box'])
-        save_data['frames'].append({
-            'time_stamp': info['timestamp'],
-            'is_key_frame': True,
-            'ego_box': info['ego_box'],
-            'obj_boxes': info['obj_boxes'],
-            'obj_names': ['car' for _ in info['obj_boxes']],
-            'planned_traj': {
-                'traj': global_traj,
-                'timestep': 0.5
-            },
-            'collision': info['collision'],
-            'rc': info['rc']
-        })
+            imu_plan_traj = plan_traj[:, [1, 0]]
+            imu_plan_traj[:, 1] *= -1
+            global_traj = traj_transform_to_global(imu_plan_traj, info['ego_box'])
+            save_data['frames'].append({
+                'time_stamp': info['timestamp'],
+                'is_key_frame': True,
+                'ego_box': info['ego_box'],
+                'obj_boxes': info['obj_boxes'],
+                'obj_names': ['car' for _ in info['obj_boxes']],
+                'planned_traj': {
+                    'traj': global_traj,
+                    'timestep': 0.5
+                },
+                'collision': info['collision'],
+                'rc': info['rc']
+            })
 
-    with open(obs_pipe, "wb") as pipe:
-        pipe.write(pickle.dumps('Done'))
+        _write_pickle_message(obs_writer, 'Done')
 
     with open(os.path.join(output, 'data.pkl'), 'wb') as wf:
         pickle.dump([save_data], wf)

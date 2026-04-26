@@ -29,13 +29,44 @@ def fg_collision_det(ego_box, objs):
             return True
     return False
 
+
+def _normalize_realcar_model_path(realcar_root, model_ref):
+    """Resolve legacy scenario entries to a model directory with gs.pth/wlh.json."""
+    if isinstance(model_ref, os.PathLike):
+        model_ref = os.fspath(model_ref)
+    elif isinstance(model_ref, int):
+        model_ref = str(model_ref)
+    elif not isinstance(model_ref, str):
+        raise TypeError(f"Unsupported model reference type: {type(model_ref).__name__}")
+
+    model_ref = model_ref.strip()
+
+    if os.path.isabs(model_ref):
+        candidate = model_ref
+    else:
+        model_token = model_ref.split("/", 1)[0]
+        if model_token.isdigit() and len(model_token) == 14:
+            model_token = (
+                f"{model_token[:4]}_{model_token[4:6]}_{model_token[6:8]}_"
+                f"{model_token[8:10]}_{model_token[10:12]}_{model_token[12:14]}"
+            )
+        candidate = os.path.join(realcar_root, model_token)
+
+    if os.path.isfile(candidate):
+        candidate = os.path.dirname(candidate)
+
+    if not os.path.exists(os.path.join(candidate, "gs.pth")):
+        raise FileNotFoundError(f"Resolved realcar model directory is invalid: {candidate}")
+
+    return candidate
+
 class HUGSimEnv(gymnasium.Env):
     def __init__(self, cfg, output):
         super().__init__()
         
         plan_list = cfg.scenario.plan_list
         for control_param in plan_list:
-            control_param[5] = os.path.join(cfg.base.realcar_path, control_param[5])
+            control_param[5] = _normalize_realcar_model_path(cfg.base.realcar_path, control_param[5])
 
         # read ground infos
         with open(os.path.join(cfg.model_path, 'ground_param.pkl'), 'rb') as f:
