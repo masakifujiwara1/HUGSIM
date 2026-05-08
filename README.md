@@ -39,6 +39,16 @@ NAVSIM_root/ckpts/ltf_seed_0.ckpt
 
 # Installation
 
+## Development Container
+
+This repository provides a VS Code Dev Container configuration in `.devcontainer/`.
+Open this repository with **Dev Containers: Reopen in Container** to build and enter the CUDA 11.8 development environment.
+
+The container is started with host networking, host IPC, privileged device access, X11 socket mounting, and NVIDIA GPU access.
+If you use GUI tools from the container, make sure your host allows X11 connections from Docker.
+
+## Pixi Environment
+
 First, install [pixi](https://pixi.sh/latest/):
 
 ``` bash

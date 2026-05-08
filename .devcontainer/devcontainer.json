@@ -1,0 +1,39 @@
+{
+  "name": "HUGSIM CUDA 11.8",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "USER_ID": "1000",
+      "USER_GID": "1000",
+      "USER_NAME": "ubuntu"
+    }
+  },
+  "remoteUser": "ubuntu",
+  "workspaceFolder": "/home/ubuntu/workspace/HUGSIM",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/ubuntu/workspace/HUGSIM,type=bind,consistency=cached",
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "QT_X11_NO_MITSHM": "1",
+    "NVIDIA_VISIBLE_DEVICES": "all",
+    "NVIDIA_DRIVER_CAPABILITIES": "compute,utility,graphics"
+  },
+  "runArgs": [
+    "--network=host",
+    "--ipc=host",
+    "--privileged",
+    "--gpus=all"
+  ],
+  "mounts": [
+    "source=/tmp/.X11-unix,target=/tmp/.X11-unix,type=bind",
+    "source=/dev,target=/dev,type=bind"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "tamasfe.even-better-toml"
+      ]
+    }
+  }
+}
