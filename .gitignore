@@ -12,6 +12,8 @@ private
 apex
 # pixi environments
 .pixi
+# uv environments
+.venv/
 *.egg-info
 
 download/

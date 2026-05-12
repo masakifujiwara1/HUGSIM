@@ -1,9 +1,9 @@
-#!/bin/zsh
+#!/bin/bash
 
 export PYTHONPATH="${PWD}:$PYTHONPATH"
 
 cuda=4
-data='/nas/datasets/nuScenes/raw/Trainval'
+data='/home/ubuntu/workspace/HUGSIM/download/data/nuscenes'
 version='interp_12Hz_trainval'
 
 # seq_list=('scene-0411' 'scene-0064' 'scene-0038' 'scene-0013')
@@ -12,7 +12,7 @@ for seq in "${seq_list[@]}"; do
         echo $seq
         start=0
         end=180
-        out=/data1/hyzhou/data/HUGSIM/release/nusc/${seq}
+        out=/home/ubuntu/workspace/HUGSIM/download/data/out/${seq}
 
         export CUDA_VISIBLE_DEVICES=$cuda
 
