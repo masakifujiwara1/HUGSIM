@@ -7,7 +7,33 @@ import torch
 from tqdm import tqdm
 from unidepth.models import UniDepthV2
 from PIL import Image
-import json
+
+
+def disable_unusable_xformers():
+    """Fall back to PyTorch SDPA when xFormers was installed for another CUDA."""
+    try:
+        from unidepth.models.backbones.metadinov2 import attention, block
+    except ImportError:
+        return
+
+    if not getattr(attention, "XFORMERS_AVAILABLE", False):
+        return
+
+    if not torch.cuda.is_available():
+        attention.XFORMERS_AVAILABLE = False
+        block.XFORMERS_AVAILABLE = False
+        return
+
+    try:
+        q = torch.empty((1, 1, 1, 16), device="cuda", dtype=torch.float16)
+        attention.memory_efficient_attention(q, q, q)
+    except Exception as exc:
+        attention.XFORMERS_AVAILABLE = False
+        block.XFORMERS_AVAILABLE = False
+        print(
+            "xFormers CUDA attention is unavailable; "
+            f"falling back to PyTorch SDPA ({exc.__class__.__name__})."
+        )
 
 
 def get_opts():
@@ -18,6 +44,8 @@ def get_opts():
 if __name__ == '__main__':
     args = get_opts()
     
+    disable_unusable_xformers()
+
     print('loading depth model...')
     model = UniDepthV2.from_pretrained("lpiccinelli/unidepth-v2-vitl14", force_download=True)
     model = model.to("cuda")
