@@ -5,6 +5,10 @@ The ASAP-generated interp_12Hz_trainval metadata can contain scenes whose
 first_sample_token is not present in sample.json.  load.py resolves a scene by
 name and immediately loads that first sample, so those scenes are not usable by
 the current loader.
+
+Examples:
+    python HUGSIM/data/nusc/list_available_scenes.py
+    python HUGSIM/data/nusc/list_available_scenes.py --format csv --out available_scenes.csv
 """
 
 import argparse

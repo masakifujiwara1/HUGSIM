@@ -12,6 +12,7 @@ export PYTHONPATH="${PWD}:${repo_root}:${PYTHONPATH:-}"
 cuda=0
 data="${repo_root}/download/data/nuscenes"
 version='interp_12Hz_trainval'
+available_scenes_csv="${AVAILABLE_SCENES_CSV:-${script_dir}/available_scenes.csv}"
 COLMAP_BIN="${COLMAP_BIN:-colmap}"
 total_steps=12
 
@@ -26,8 +27,34 @@ if ! command -v "${COLMAP_BIN}" >/dev/null 2>&1; then
         exit 127
 fi
 
-# seq_list=('scene-0411' 'scene-0064' 'scene-0038' 'scene-0013')
-seq_list=('scene-1059' )
+if [[ ! -f "${available_scenes_csv}" ]]; then
+        echo "Available scenes CSV not found: ${available_scenes_csv}" >&2
+        echo "Create it with:" >&2
+        echo "  python ${script_dir}/list_available_scenes.py --format csv --out ${available_scenes_csv}" >&2
+        exit 1
+fi
+
+mapfile -t seq_list < <(
+        python - "${available_scenes_csv}" <<'PY'
+import csv
+import sys
+
+csv_path = sys.argv[1]
+with open(csv_path, newline="", encoding="utf-8") as f:
+    reader = csv.DictReader(f)
+    if "name" not in (reader.fieldnames or ()):
+        raise SystemExit(f"CSV is missing required 'name' column: {csv_path}")
+    for row in reader:
+        if row.get("status", "available") == "available" and row.get("name"):
+            print(row["name"])
+PY
+)
+
+if (( ${#seq_list[@]} == 0 )); then
+        echo "No available scenes found in CSV: ${available_scenes_csv}" >&2
+        exit 1
+fi
+
 for seq in "${seq_list[@]}"; do
         echo "==== ${seq} ===="
         step=0
