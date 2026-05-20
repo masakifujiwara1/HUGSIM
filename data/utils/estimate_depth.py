@@ -47,7 +47,7 @@ if __name__ == '__main__':
     disable_unusable_xformers()
 
     print('loading depth model...')
-    model = UniDepthV2.from_pretrained("lpiccinelli/unidepth-v2-vitl14", force_download=True)
+    model = UniDepthV2.from_pretrained("lpiccinelli/unidepth-v2-vitl14", force_download=False)
     model = model.to("cuda")
     model.eval()
     print("Depth model loaded")
