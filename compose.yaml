@@ -1,0 +1,31 @@
+services:
+  hungsim:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+      args:
+        USER_ID: ${USER_ID:-1000}
+        USER_GID: ${USER_GID:-1000}
+        USER_NAME: ${USER_NAME:-ubuntu}
+    image: hungsim:cuda11.8
+    container_name: hungsim
+    user: ${USER_NAME:-ubuntu}
+    working_dir: /home/${USER_NAME:-ubuntu}/workspace/HUGSIM
+    command: bash
+    tty: true
+    stdin_open: true
+    network_mode: host
+    ipc: host
+    privileged: true
+    gpus: all
+    environment:
+      DISPLAY: ${DISPLAY:-}
+      QT_X11_NO_MITSHM: "1"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics
+    volumes:
+      - .:/home/${USER_NAME:-ubuntu}/workspace/HUGSIM
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev:/dev
+      - /etc/apt/apt.conf:/etc/apt/apt.conf
+      - /home/${USER}/.bashrc:/home/${USER_NAME:-ubuntu}/.bashrc

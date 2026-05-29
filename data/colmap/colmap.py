@@ -1,9 +1,18 @@
 import os
 import numpy as np
+import shlex
+import shutil
 import sqlite3
+import subprocess
 
 class COLMAPAuto:
     def __init__(self, dense):
+        self.colmap_bin = os.environ.get('COLMAP_BIN', 'colmap')
+        if shutil.which(self.colmap_bin) is None:
+            raise FileNotFoundError(
+                f'COLMAP executable not found: {self.colmap_bin}. '
+                'Install COLMAP and make sure it is on PATH, or set COLMAP_BIN=/path/to/colmap.'
+            )
         self.path_dense = dense
         self.path_database = os.path.join(self.path_dense, 'database.db')
         self.path_images = os.path.join(self.path_dense, 'images')
@@ -22,11 +31,12 @@ class COLMAPAuto:
             os.remove(self.path_database)
 
     def __call__(self, args):
-        script = ' '.join(args)
+        cmd = [self.colmap_bin if args[0] == 'colmap' else args[0], *args[1:]]
+        script = ' '.join(shlex.quote(arg) for arg in cmd)
         print(20 * '=')
         print(script)
         print(20 * '=')
-        os.system(script)
+        subprocess.run(cmd, check=True)
 
     def feature_extract(self, cam_calib_in=None):
         self.remove_database()
@@ -38,7 +48,7 @@ class COLMAPAuto:
             # '--ImageReader.camera_params', cam_calib_in,
             '--ImageReader.mask_path', self.path_masks,
             '--ImageReader.single_camera_per_folder', '1',
-            '--ImageReader.camera_model', 'PINHOLE ',
+            '--ImageReader.camera_model', 'PINHOLE',
             '--SiftExtraction.use_gpu', '1',
             # '--SiftExtraction.max_num_features', '8192',
             # '--SiftExtraction.estimate_affine_shape', '0',
@@ -48,7 +58,7 @@ class COLMAPAuto:
 
     def sequential_matcher(self):
         if not os.path.exists(self.path_database):
-            assert FileNotFoundError(f'database file required')
+            raise FileNotFoundError('database file required')
 
         self([
             'colmap', 'sequential_matcher',
@@ -59,7 +69,7 @@ class COLMAPAuto:
 
     def vocab_matcher(self, vocab_tree_path):
         if not os.path.exists(self.path_database):
-            assert FileNotFoundError(f'database file required')
+            raise FileNotFoundError('database file required')
 
         self([
             'colmap', 'vocab_tree_matcher',
@@ -96,7 +106,20 @@ class COLMAPAuto:
         name__id = {}
         for image_id, image_name in cur.execute('''SELECT image_id, name FROM images '''):
             name__id[image_name] = image_id
+        dbconn.close()
         return name__id
+
+    def image_metadata_in_database(self):
+        dbconn = sqlite3.connect(self.path_database)
+        cur = dbconn.cursor()
+        name__metadata = {}
+        for image_id, image_name, camera_id in cur.execute('''SELECT image_id, name, camera_id FROM images '''):
+            name__metadata[image_name] = {
+                'image_id': image_id,
+                'camera_id': camera_id,
+            }
+        dbconn.close()
+        return name__metadata
 
     def ba(self, inter=0):
         os.makedirs(self.path_ba, exist_ok=True)
@@ -129,10 +152,10 @@ class COLMAPAuto:
 
     def mapper(self, max_error=12.0):
         if not os.path.exists(self.path_database):
-            assert FileNotFoundError(f'database file required')
+            raise FileNotFoundError('database file required')
 
         if os.path.exists(self.path_sparse):
-            os.system(f'rm -rf {self.path_sparse}')
+            shutil.rmtree(self.path_sparse)
         os.makedirs(self.path_sparse, exist_ok=True)
 
         self([

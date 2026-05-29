@@ -47,23 +47,52 @@ Open this repository with **Dev Containers: Reopen in Container** to build and e
 The container is started with host networking, host IPC, privileged device access, X11 socket mounting, and NVIDIA GPU access.
 If you use GUI tools from the container, make sure your host allows X11 connections from Docker.
 
-## Pixi Environment
+## uv Environment
 
-First, install [pixi](https://pixi.sh/latest/):
+Run the following commands inside the Docker container or VS Code Dev Container.
+If `uv` is not installed in the container yet, install it first:
 
 ``` bash
-curl -fsSL https://pixi.sh/install.sh | sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-As the repository depends on some packages that can only be installed from source code, and rely on pytorch and cuda to compile, the installation of pixi environment is seperated as **two steps**:
+Create the Python 3.11.10 environment and install the HUGSIM dependencies:
 
-1. Comment the packages below `# install from source code` in `pixi.toml`, then run `pixi install` to install the packages from pypi.
-2. Uncomment the packages in the previous step, then run `pixi install` to install these packages from source code.
-3. Install apex (required by InverseForm) by running `pixi run install-apex`
+``` bash
+uv python install 3.11.10
+uv sync
+```
 
-Change into the **pixi environment** by using the command `pixi shell`.
+Verify the environment:
 
-Or you can use `pixi run <command>` to run a command in the **pixi environment**.
+``` bash
+uv run python -c "import torch; print(torch.__version__, torch.version.cuda)"
+uv run python -c "import hugsim_env"
+```
+
+This repository depends on several packages that are built from source against PyTorch and CUDA.
+The uv configuration in `pyproject.toml` installs PyTorch from the CUDA 11.8 wheel index and adds the build dependencies required by the CUDA extension packages.
+
+Install apex (required by InverseForm) in the uv environment:
+
+``` bash
+uv run --no-sync bash -lc 'cd data/InverseForm && ([ -d apex ] || git clone https://github.com/NVIDIA/apex.git apex) && cd apex && git checkout ac8214ee6ba77c0037c693828e39d83654d25720 && python setup.py install --cuda_ext --cpp_ext'
+```
+
+Verify apex:
+
+``` bash
+uv run python -c "import apex"
+```
+
+Change into the **uv environment** by using the command:
+
+``` bash
+source .venv/bin/activate
+```
+
+Or you can use `uv run <command>` to run a command in the **uv environment**.
 
 
 # Data Preparation
